@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Facebook Multi React Tool</title>
+    <style>
+        body {font-family: Arial, sans-serif; margin: 20px;}
+        #tasksList > div {border: 1px solid #ccc; margin: 5px; padding: 10px;}
+        button {cursor: pointer;}
+    </style>
+</head>
+<body>
+    <h2>Facebook Multi React Tool</h2>
+
+    <form id="multiReactForm" enctype="multipart/form-data">
+        <label>Facebook Access Token (Single) or Upload Tokens File (One token per line):</label><br />
+        <input type="text" id="access_token" name="access_token" placeholder="Enter single token here" size="60"><br /><br />
+        OR<br /><br />
+        <input type="file" id="tokens_file" name="tokens_file" accept=".txt"><br /><br />
+
+        <label>Target Post IDs (multiple allowed, separate by new lines or commas):</label><br />
+        <textarea id="post_ids" name="post_ids" rows="5" cols="60" placeholder="Enter post IDs here, one per line or comma separated" required></textarea><br /><br />
+
+        <label>Reaction Type:</label><br />
+        <select id="reaction_type" name="reaction_type" required>
+            <option value="LIKE">Like</option>
+            <option value="LOVE">Love</option>
+            <option value="WOW">Wow</option>
+            <option value="HAHA">Haha</option>
+            <option value="SAD">Sad</option>
+            <option value="ANGRY">Angry</option>
+        </select><br /><br />
+
+        <button type="submit">React to Posts</button>
+    </form>
+
+    <h3>Active/Completed Tasks</h3>
+    <div id="tasksList">Loading tasks...</div>
+
+    <script>
+        async function loadTasks() {
+            const resp = await fetch('/tasks');
+            const tasks = await resp.json();
+            const container = document.getElementById('tasksList');
+            container.innerHTML = '';
+
+            if (Object.keys(tasks).length === 0) {
+                container.innerText = 'No active tasks.';
+                return;
+            }
+
+            for (const [taskId, taskData] of Object.entries(tasks)) {
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <strong>Task ID:</strong> ${taskId}<br/>
+                    <strong>Status:</strong> ${taskData.status}<br/>
+                    <strong>Tokens:</strong> ${taskData.tokens}<br/>
+                    <strong>Posts:</strong> ${taskData.posts}<br/>
+                    <button onclick="deleteTask('${taskId}')">Remove Task</button>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        async function deleteTask(taskId) {
+            if (!confirm(`Remove task ${taskId}?`)) return;
+            const resp = await fetch(`/tasks/${taskId}`, { method: 'DELETE' });
+            const result = await resp.json();
+            alert(result.message || result.error);
+            await loadTasks();
+        }
+
+        document.getElementById('multiReactForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            const response = await fetch('/react-multi', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            alert(result.message || result.error);
+            await loadTasks();
+        });
+
+        loadTasks();
+        setInterval(loadTasks, 10000);
+    </script>
+</body>
+</html>
